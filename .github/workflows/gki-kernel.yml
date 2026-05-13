@@ -262,6 +262,12 @@ jobs:
             echo "Adding KernelSU SukiSU..."
             curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash $BRANCH
           fi
+
+      - name: Фикс sulog event.c
+        if: ${{ inputs.kernelsu_variant == 'SukiSU' }}
+        run: |
+          cd "$CONFIG/KernelSU"
+          sed -i 's/ksu_sulog_capture(KSU_SULOG_EVENT_IOCTL_GRANT_ROOT, NULL, USER_ARG_NULL,/ksu_sulog_capture(KSU_SULOG_EVENT_IOCTL_GRANT_ROOT, NULL, \&(struct user_arg_ptr){ 0 },/' kernel/sulog/event.c
           
       - name: 添加 Baseband-guard 支持
         if: ${{ github.event.inputs.BBG == 'true' }}
