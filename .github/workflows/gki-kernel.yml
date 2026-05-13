@@ -411,11 +411,16 @@ jobs:
             #patch -p1 -F 3 < scope_min_manual_hooks_v1.4.patch
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             echo "Applying hooks for SukiSU..."
-            #cp ../../SukiSU_patch/hooks/scope_min_manual_hooks_v1.6.patch ./
-            #patch -p1 -F 3 < scope_min_manual_hooks_v1.6.patch
+            cp ../../SukiSU_patch/hooks/scope_min_manual_hooks_v1.6.patch ./
+            patch -p1 -F 3 < scope_min_manual_hooks_v1.6.patch
           fi
           
-
+      - name: Фикс конфликта read_write.c
+        if: ${{ inputs.kernelsu_variant == 'SukiSU' }}
+        run: |
+          cd "$CONFIG/common"
+          sed -i '/extern __attribute__((cold)) void ksu_handle_sys_read(unsigned int fd);/d' fs/read_write.c
+          
       - name: 复制源文件 & 应用LZ4KD & ZSTDN补丁
         if: ${{ inputs.use_zram }}
         run: |
