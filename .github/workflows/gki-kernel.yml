@@ -339,11 +339,7 @@ jobs:
 
             # Fix 2: SUSFS patch expects these two static keys defined in KernelSU code.
             # Official KSU gets them from 10_enable_susfs_for_ksu.patch; SukiSU needs them too.
-            cat > runtime/susfs_keys.c << 'CEOF'
-#include <linux/jump_label.h>
-DEFINE_STATIC_KEY_TRUE(ksu_is_init_rc_hook_enabled);
-DEFINE_STATIC_KEY_TRUE(ksu_is_input_hook_enabled);
-CEOF
+            printf '#include <linux/jump_label.h>\nDEFINE_STATIC_KEY_TRUE(ksu_is_init_rc_hook_enabled);\nDEFINE_STATIC_KEY_TRUE(ksu_is_input_hook_enabled);\n' > runtime/susfs_keys.c
             echo "kernelsu-objs += runtime/susfs_keys.o" >> Kbuild
 
             cd ../..
