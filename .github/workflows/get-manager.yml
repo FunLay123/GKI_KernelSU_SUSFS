@@ -90,7 +90,7 @@ jobs:
             "https://api.github.com/repos/$REPO/actions/runs/$BUILD_ID/artifacts")
           
           # 4. Get Manager file download URL
-          DOWNLOAD_URL=$(echo "$ARTIFACTS" | jq -r '.artifacts[] | select(.name | contains("Manager")) | .archive_download_url')
+          DOWNLOAD_URL=$(echo "$ARTIFACTS" | jq -r '.artifacts[] | select(.name | contains("manager")) | .archive_download_url')
           
           echo "Retrieved DOWNLOAD_URL: $DOWNLOAD_URL"
           
