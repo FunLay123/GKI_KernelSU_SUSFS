@@ -231,7 +231,7 @@ jobs:
               case "$variant_input" in
                 "Official" | "MKSU") echo "BRANCH=-s main" >> $GITHUB_ENV ;;
                 "Next")              echo "BRANCH=-s next-susfs-dev" >> $GITHUB_ENV ;;
-                "SukiSU")           echo "BRANCH=-s builtin" >> $GITHUB_ENV ;;
+                "SukiSU")           echo "BRANCH=-s main" >> $GITHUB_ENV ;;
                 *) 
                   echo "错误：未定义开发分支的变体 '$variant_input'" >&2
                   exit 1
@@ -262,12 +262,6 @@ jobs:
             echo "Adding KernelSU SukiSU..."
             curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash $BRANCH
           fi
-
-      - name: Фикс sulog event.c
-        if: ${{ inputs.kernelsu_variant == 'SukiSU' }}
-        run: |
-          cd "$CONFIG/KernelSU"
-          sed -i 's/ksu_sulog_capture(KSU_SULOG_EVENT_IOCTL_GRANT_ROOT, NULL, USER_ARG_NULL,/ksu_sulog_capture(KSU_SULOG_EVENT_IOCTL_GRANT_ROOT, NULL, \&(struct user_arg_ptr){ 0 },/' kernel/sulog/event.c
           
       - name: 添加 Baseband-guard 支持
         if: ${{ github.event.inputs.BBG == 'true' }}
@@ -331,8 +325,28 @@ jobs:
             patch -p1 < fix.patch || true
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             echo "Applying SUSFS patches for SukiSU..."
-             cd ./KernelSU
-            echo "Applying SukiSU specific SUSFS patch..."
+            cd ./KernelSU/kernel
+
+            # Fix 1: SUSFS patch references these symbols as 'extern', but they are
+            # declared 'static' in selinux_hide.c — remove 'static' so they are visible
+            sed -i \
+              -e 's/^static bool ksu_selinux_hide_running/bool ksu_selinux_hide_running/' \
+              -e 's/^static int security_context_to_sid_with_policy/int security_context_to_sid_with_policy/' \
+              -e 's/^static int security_sid_to_context_with_policy/int security_sid_to_context_with_policy/' \
+              -e 's/^static void security_compute_av_user_with_policy/void security_compute_av_user_with_policy/' \
+              -e 's/^static void __nocfi security_compute_av_user_with_policy/void __nocfi security_compute_av_user_with_policy/' \
+              feature/selinux_hide.c
+
+            # Fix 2: SUSFS patch expects these two static keys defined in KernelSU code.
+            # Official KSU gets them from 10_enable_susfs_for_ksu.patch; SukiSU needs them too.
+            cat > runtime/susfs_keys.c << 'CEOF'
+#include <linux/jump_label.h>
+DEFINE_STATIC_KEY_TRUE(ksu_is_init_rc_hook_enabled);
+DEFINE_STATIC_KEY_TRUE(ksu_is_input_hook_enabled);
+CEOF
+            echo "kernelsu-objs += runtime/susfs_keys.o" >> Kbuild
+
+            cd ../..
           else
             echo "Invalid KernelSU variant selected!"
             exit 1
@@ -415,12 +429,7 @@ jobs:
             patch -p1 -F 3 < scope_min_manual_hooks_v1.6.patch
           fi
           
-      - name: Фикс конфликта read_write.c
-        if: ${{ inputs.kernelsu_variant == 'SukiSU' }}
-        run: |
-          cd "$CONFIG/common"
-          sed -i '/extern __attribute__((cold)) void ksu_handle_sys_read(unsigned int fd);/d' fs/read_write.c
-          
+
       - name: 复制源文件 & 应用LZ4KD & ZSTDN补丁
         if: ${{ inputs.use_zram }}
         run: |
