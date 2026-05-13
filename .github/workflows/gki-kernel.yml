@@ -342,7 +342,7 @@ jobs:
             printf '#include <linux/jump_label.h>\nDEFINE_STATIC_KEY_TRUE(ksu_is_init_rc_hook_enabled);\nDEFINE_STATIC_KEY_TRUE(ksu_is_input_hook_enabled);\n' > runtime/susfs_keys.c
             echo "kernelsu-objs += runtime/susfs_keys.o" >> Kbuild
 
-            cd ../..
+            cd ..
           else
             echo "Invalid KernelSU variant selected!"
             exit 1
